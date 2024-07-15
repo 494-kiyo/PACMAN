@@ -1,5 +1,8 @@
 # Pac-Man using an STM32F401RE
 
+### Terminologies
+- DDRAM: Display Data RAM which stores the character to be shown at particular positions. Since I am using a 16x2 display, 32 characters can be shown.
+
 ## Materials
 1. 2004 I2C LCD (Character Display Module LCD - Color I2C 99.00mm x 60.00mm x 22.00mm)
 2. ANALOG 2-AXIS THUMB JOYSTICK WIT
@@ -20,5 +23,21 @@
 - The buzzer is set as GPIO_Input on PB10 (PWM/D6)
 
 ![image2](https://github.com/user-attachments/assets/51b45d16-cd63-412f-bfd8-c203b666af73)
+![image](https://github.com/user-attachments/assets/5a4ca3f4-88b6-4894-b530-74c42caa9e5e)
 
 ## LCD with PCF8574
+The PCF8574 expansion allows for easier setup of the data transfer between the display and the microcontroller board. The display itself has the following pins: VSS, VDD, V0, RS (0 for command and 1 for data), R/W, E (enable signal), D0 - D7 pins, A, and K.
+
+The most important pins are the RS, R/W and the E signals as they depend on the instruction being sent to or from the display. If the bits are an instruction, RS is 0. E should be 1 when the data is being sent and must be set to 1 after data transfer to notify of the end of transfer.
+
+To use the I2C protocol, a [LCD I2C library](https://controllerstech.com/i2c-lcd-in-stm32/) was imported to the project. The three functions that I have referred to are: lcd_send_cmd, lcd_send_data, and lcd_init. The rest of the functions were written by me. 
+
+### Library Functions
+- Clear Display
+  - This clears the display data, resets the address counter, and returns the cursor to the top left of the display.
+- Return Home
+  - Move the cursor to the top left of the display.
+- Entry Mode Set
+  - Cursor direction
+  - I/D: increment (move the cursor to right) or decrement (move the cursor to left) the address of DDRAM
+  - 
