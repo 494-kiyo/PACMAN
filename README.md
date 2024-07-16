@@ -30,14 +30,23 @@ The PCF8574 expansion allows for easier setup of the data transfer between the d
 
 The most important pins are the RS, R/W and the E signals as they depend on the instruction being sent to or from the display. If the bits are an instruction, RS is 0. E should be 1 when the data is being sent and must be set to 1 after data transfer to notify of the end of transfer.
 
-To use the I2C protocol, a [LCD I2C library](https://controllerstech.com/i2c-lcd-in-stm32/) was imported to the project. The three functions that I have referred to are: lcd_send_cmd, lcd_send_data, and lcd_init. The rest of the functions were written by me. 
+To use the I2C protocol, a [LCD I2C library](https://controllerstech.com/i2c-lcd-in-stm32/) was imported to the project. The three functions that I have referred to are: lcd_send_cmd, lcd_send_data, and lcd_init. The rest of the functions were written by me using the data sheet.
 
 ### Library Functions
-- Clear Display
+- clear_display (void)
   - This clears the display data, resets the address counter, and returns the cursor to the top left of the display.
-- Return Home
+- return_home (void)
   - Move the cursor to the top left of the display.
-- Entry Mode Set
+- entry_mode (int dir, int s)
   - Cursor direction
-  - I/D: increment (move the cursor to right) or decrement (move the cursor to left) the address of DDRAM
-  - 
+  - I/D: Increment (move the cursor to right) or decrement (move the cursor to left) the address of DDRAM
+  - S: Shift the display left or right
+- display_on_off (int d, int c, int b)
+  - Turn the display on or off (data is not lost)
+  - No cursor displayed (just a visual thing)
+  - Cursor blink
+- function_set (int dl, int n int f)
+  - 8-bit or 4 bit
+  - 0 for 1 display line and 1 for 2 display lines
+  - Font style 5x8 or 5x11
+- 
