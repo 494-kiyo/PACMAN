@@ -1,0 +1,5 @@
+../Core/Src/pacman.c:17:6:game_init	4
+../Core/Src/pacman.c:46:6:game_display	4
+../Core/Src/pacman.c:62:5:move_player	10
+../Core/Src/pacman.c:87:6:move_enemy	7
+../Core/Src/pacman.c:110:6:check_status	4
