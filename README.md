@@ -69,7 +69,10 @@ The joystick has analog outputs for x and y and a sel signal that shorts to zero
 
 The joystick input values range from 0 to 4100. So a function was created to run inside the main loop to continuously check for the joystick position.
 
-## Buzzer!
+## Timers
+TIM1 was used to move the enemy. TIM3 was used to generate the PWM for the buzzer.
+![image](https://github.com/user-attachments/assets/b0427f84-5098-4818-aa09-78f3c89b760f)
+![image](https://github.com/user-attachments/assets/34db2539-1e9d-4893-ad8d-23a2fef925c3)
 
 ## Game Algorithm
 The big picture of the game algorithm is:
