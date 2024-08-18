@@ -40,3 +40,14 @@ The timer is set up to generate frequencies for PWM signals. In this project, so
 
 ## Game Logic
 The functions for the game can be found [here](pacman/Core/Src/pacman.c). The game initialization sets the player’s and enemy’s positions, randomly generates and places food locations in a two-dimensional array, and saves the number of foods in the player’s class. The enemy moves automatically each time the timer autoreloads and is programmed to follow the player’s position by checking its row and column. To ensure the enemy moves only once per timer pulse, it tracks the previous timer pulse. The player’s moves are checked to prevent going out of bounds; if the player does go out of bounds, they are reset to the previous position. The game display function is called whenever the display needs to update, which occurs when either the player or enemy moves. The function first clears the display before printing the food, player, and enemy. Lastly, a game status-checking function continuously monitors whether the enemy’s position overlaps with the player’s position and whether the player has collected all the foods.
+
+## Comments
+Some of the challenges I faced in this projects were:
+1. **Joystick Malfunction:**
+   - The joystick malfunctioned and stopped recognizing the right and down inputs
+   - Replaced the joystick with four buttons to simulate directional controls
+   - Implemented an interrupt-driven callback function to recognize the player moves real time and checked the time since the last input to debounce buttons
+2. **Frames of the game being refreshed too often leading to graphical issues:**
+   - Only updated the display when there are changes to the game state by using a global display flag
+3. **Sound functions using HAL_Delay()**
+   - Cannot be used during the game, but before or after the game
