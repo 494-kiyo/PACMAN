@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "i2c-lcd.h"
 #include "pacman.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -37,6 +38,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define JOYSTICK_VALUE 1
+#define TIM_FREQ 84000000
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -54,6 +56,7 @@ DMA_HandleTypeDef hdma_i2c1_tx;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart2;
 
@@ -70,15 +73,28 @@ static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 Direction joystick_direction(void);
-void sound(void);
+Direction button_direction (void);
+
+void snd_start (TIM_HandleTypeDef *htim, uint32_t tim_channel);
+void snd_eat (TIM_HandleTypeDef *htim, uint32_t tim_channel);
+void snd_win (TIM_HandleTypeDef *htim, uint32_t tim_channel);
+void snd_lose (TIM_HandleTypeDef *htim, uint32_t tim_channel);
+int presForFrequency (int frequency);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 uint32_t VR[2];
 uint8_t clock_flag = 0;
+
+Player player;
+Enemy enemy;
+Game_status status;
+volatile int update_display_flag = 0;
+
 /* USER CODE END 0 */
 
 /**
@@ -89,7 +105,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+	// the food? enemy, border
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -116,6 +132,7 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   srand(time(NULL));
 
@@ -133,12 +150,13 @@ int main(void)
   lcd_send_cmd(0x40+8);
   for (int i=0; i<8; i++) lcd_send_data(inky[i]);
 
+  pcm_game_init(&player, &enemy, &status);
+
   HAL_ADC_Start_DMA(&hadc1, VR, 2);
 
-  Player player;
-  Ghost ghost;
-  Game_status status = menu;
-  game_init(&player, &ghost, status);
+  HAL_TIM_Base_Start_IT(&htim2);
+  HAL_TIM_Base_Start_IT(&htim4);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 
   // MAIN MENU SCREEN
   lcd_cursor_pos(1, 4);
@@ -147,8 +165,14 @@ int main(void)
   lcd_cursor_pos(2, 6);
   lcd_send_string("TO START");
 
-  HAL_TIM_Base_Start_IT(&htim2);
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+  while (1) {
+	  if (HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_13) == GPIO_PIN_RESET && status == menu) {
+		  break;
+	  }
+  }
+
+  status = in_progress;
+  snd_start(&htim3, TIM_CHANNEL_1);
 
   /* USER CODE END 2 */
 
@@ -159,34 +183,28 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  direction = joystick_direction(); // real time direction
 
-	  // change the game status to in_progress if the user presses the blue button
-	  if (HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_13) == GPIO_PIN_RESET) {
-		  status = in_progress;
-		  game_display(&player, &ghost);
-		  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
+	  // Current code uses four buttons to move
+	  //Direction direction = joystick_direction(); // real time direction
+	  pcm_check_status(&player, &enemy, &status);
+	  if (status == in_progress && update_display_flag == 1) {
+		  pcm_display_game(&player, &enemy);
+		  update_display_flag = 0;
 	  }
-	  else {
-		  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
-	  }
-
-	  if (status == in_progress) {
-		 move_player(&player, direction);
-		 move_enemy(&player, &ghost, clock_flag);
-		 game_display(&player, &ghost);
-		 check_status(&player, &ghost, &status);
-		 sound();
-	  }
-	  else if (status == over) {
+	  if (status == win) {
 		  lcd_clear_display();
-		  lcd_send_string("GAME OVER!");
-	  }
-	  else if (status == win) {
-		  lcd_clear_display();
+		  lcd_cursor_pos(0, 0);
 		  lcd_send_string("YOU WIN!");
+		  snd_win(&htim3, TIM_CHANNEL_1);
+		  while (1){}
 	  }
-
+	  if (status == over) {
+		  lcd_clear_display();
+		  lcd_cursor_pos(0, 0);
+		  lcd_send_string("GAME OVER!");
+		  snd_lose(&htim3, TIM_CHANNEL_1);
+		  while (1){}
+	  }
   }
   /* USER CODE END 3 */
 }
@@ -351,9 +369,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 9000;
+  htim2.Init.Prescaler = 839;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 10000;
+  htim2.Init.Period = 99999;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -397,7 +415,7 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 230;
+  htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 1000;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -422,7 +440,7 @@ static void MX_TIM3_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
+  sConfigOC.Pulse = 500;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -433,6 +451,51 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
+
+}
+
+/**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 839;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 49999;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
 
 }
 
@@ -528,6 +591,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : PC5 PC6 PC8 PC9 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_8|GPIO_PIN_9;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
   /*Configure GPIO pins : PB10 PB5 */
   GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
@@ -540,6 +609,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
@@ -559,17 +632,100 @@ Direction joystick_direction (void) {
 	else if (VR[1] < 50) {
 		return down;
 	}
+	return none;
 }
 
-void sound (void) {
-	TIM3->ARR = 156;
-	TIM3->CCR3 = TIM3->ARR / 2;
-	HAL_Delay(100);
-}
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	static uint32_t last_interrupt_time = 0;
+	uint32_t current_time = HAL_GetTick();
+
+	if (current_time - last_interrupt_time < 50) {
+		return;
+	}
+
+	last_interrupt_time = current_time;
+
+	switch (GPIO_Pin) {
+		case GPIO_PIN_9:
+			pcm_move_player(&player, left); //if (pcm_move_player(&player, left) == 1) snd_eat(&htim3, TIM_CHANNEL_1);
+			update_display_flag = 1;
+			break;
+		case GPIO_PIN_8:
+			pcm_move_player(&player, up); //if (pcm_move_player(&player, up) == 1) snd_eat(&htim3, TIM_CHANNEL_1);
+			update_display_flag = 1;
+			break;
+		case GPIO_PIN_6:
+			pcm_move_player(&player, down); //if (pcm_move_player(&player, down) == 1) snd_eat(&htim3, TIM_CHANNEL_1);
+			update_display_flag = 1;
+			break;
+		case GPIO_PIN_5:
+			pcm_move_player(&player, right); //if (pcm_move_player(&player, right) == 1) snd_eat(&htim3, TIM_CHANNEL_1);
+			update_display_flag = 1;
+			break;
+		}
+	}
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	clock_flag ^= 0x01;
+	if (htim->Instance == TIM4) {
+		update_display_flag = 1;
+	}
+	if (htim->Instance == TIM2) {
+		clock_flag ^= 0x01;
+		pcm_move_enemy(&player, &enemy, clock_flag);
+		//update_display_flag = 1;
+	}
+}
+
+void snd_start (TIM_HandleTypeDef *htim, uint32_t tim_channel) {
+	__HAL_TIM_SET_PRESCALER(htim, presForFrequency(1000));
+	HAL_Delay(250);
+	__HAL_TIM_SET_PRESCALER(htim, presForFrequency(3000));
+	HAL_Delay(250);
+	__HAL_TIM_SET_PRESCALER(htim, presForFrequency(6000));
+	HAL_Delay(250);
+	__HAL_TIM_SET_PRESCALER(htim, presForFrequency(9000));
+	HAL_Delay(250);
+	__HAL_TIM_SET_PRESCALER(htim, presForFrequency(12000));
+	HAL_Delay(250);
+	HAL_TIM_PWM_Stop(htim, tim_channel);
+}
+
+void snd_eat (TIM_HandleTypeDef *htim, uint32_t tim_channel) {
+	HAL_TIM_PWM_Start(htim, tim_channel);
+	__HAL_TIM_SET_PRESCALER(htim, presForFrequency(3000));
+	HAL_Delay(250);
+	__HAL_TIM_SET_PRESCALER(htim, presForFrequency(1000));
+	HAL_Delay(250);
+	HAL_TIM_PWM_Stop(htim, tim_channel);
+}
+
+void snd_win (TIM_HandleTypeDef *htim, uint32_t tim_channel) {
+	HAL_TIM_PWM_Start(htim, TIM_CHANNEL_1);
+	__HAL_TIM_SET_PRESCALER(htim, presForFrequency(3000));
+	HAL_Delay(250);
+	__HAL_TIM_SET_PRESCALER(htim, presForFrequency(1000));
+	HAL_Delay(250);
+	__HAL_TIM_SET_PRESCALER(htim, presForFrequency(6000));
+	HAL_Delay(250);
+	HAL_TIM_PWM_Stop(htim, tim_channel);
+}
+
+void snd_lose (TIM_HandleTypeDef *htim, uint32_t tim_channel) {
+	HAL_TIM_PWM_Start(htim, tim_channel);
+	__HAL_TIM_SET_PRESCALER(htim, presForFrequency(6000));
+	HAL_Delay(250);
+	__HAL_TIM_SET_PRESCALER(htim, presForFrequency(3000));
+	HAL_Delay(250);
+	__HAL_TIM_SET_PRESCALER(htim, presForFrequency(1000));
+	HAL_Delay(250);
+	HAL_TIM_PWM_Stop(htim, tim_channel);
+}
+
+int presForFrequency (int frequency)
+{
+	if (frequency == 0) return 0;
+	return ((TIM_FREQ/(1000*frequency))-1);  // 1 is added in the register
 }
 
 /* USER CODE END 4 */

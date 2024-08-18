@@ -22,7 +22,7 @@ typedef struct {
 	int row;
 	int col;
 	uint8_t clock_before;
-} Ghost;
+} Enemy;
 
 typedef enum {
 	menu,
@@ -35,13 +35,14 @@ typedef enum {
 	up,
 	down,
 	left,
-	right
+	right, none
 } Direction;
 
-void game_init (Player * player, Ghost * ghost, Game_status status);
-void game_display (Player * player, Ghost * ghost);
-int move_player (Player * player, Direction direction);
-void move_enemy (Player * player, Ghost * ghost, uint8_t pulse);
-void check_status (Player * player, Ghost * ghost, Game_status * status);
+void pcm_game_init (Player * player, Enemy * enemy, Game_status * status);
+void pcm_display_game (Player * player, Enemy * enemy);
+void pcm_display_enemy (Enemy * enemy);
+int pcm_move_player (Player * player, Direction direction);
+void pcm_move_enemy (Player * player, Enemy * enemy, uint8_t pulse);
+void pcm_check_status (Player * player, Enemy * enemy, Game_status * status);
 
 #endif /* SRC_PACMAN_H_ */

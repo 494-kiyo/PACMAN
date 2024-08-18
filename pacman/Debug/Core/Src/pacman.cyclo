@@ -1,5 +1,6 @@
-../Core/Src/pacman.c:17:6:game_init	4
-../Core/Src/pacman.c:46:6:game_display	4
-../Core/Src/pacman.c:62:5:move_player	10
-../Core/Src/pacman.c:87:6:move_enemy	7
-../Core/Src/pacman.c:110:6:check_status	4
+../Core/Src/pacman.c:18:6:pcm_game_init	4
+../Core/Src/pacman.c:47:6:pcm_display_game	5
+../Core/Src/pacman.c:73:6:pcm_display_enemy	1
+../Core/Src/pacman.c:79:5:pcm_move_player	10
+../Core/Src/pacman.c:111:6:pcm_move_enemy	7
+../Core/Src/pacman.c:137:6:pcm_check_status	4
