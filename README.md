@@ -10,9 +10,9 @@ This is an embedded project that recreates the popular arcade game Pac-Man using
 - **Random Foods:** All foods must be collected to advance to the next stage, and this must be done before being caught by the enemy.
 
 ## Hardware Integration
-- I2C LCD [(2004 LCD)](https://www.digikey.ca/en/products/detail/sunfounder/CN0296D/18668625?utm_adgroup=&utm_term=&utm_content=&gad_source=1)
-- Joystick [(Analog 2-axis Thumb Joystick with Select Button + Breakout Board)](https://www.digikey.ca/en/products/detail/adafruit-industries-llc/512/7056915)
-- Buzzer [(PS1240P02BT)](https://www.digikey.ca/en/products/detail/tdk-corporation/PS1240P02BT/935924)
+- I2C LCD [(2004 LCD)](https://www.sunfounder.com/products/i2c-lcd2004-module)
+- Joystick [(Analog 2-axis Thumb Joystick with Select Button + Breakout Board)](https://www.adafruit.com/product/512)
+- Buzzer [(PS1240P02BT)](https://product.tdk.com/en/search/sw_piezo/sw_piezo/piezo-buzzer/info?part_no=PS1240P02BT)
 
 ## Project Setup
 ![pinout](https://github.com/user-attachments/assets/7e0772ab-b280-4208-bb0f-35097a52222a) ![image](https://github.com/user-attachments/assets/d3690178-f210-460b-88df-5f05370047e6)
